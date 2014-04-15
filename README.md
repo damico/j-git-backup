@@ -15,3 +15,8 @@ This application is based on CLI (Command Line Interface) and have some importan
 - JRE (Java Runtime Environment) version >= 6
 - Correct Configuration File
 
+------------
+
+How it works for me? Well, in my situation, I've added a bash sript that calls the j-git-backup in our CRON TABLE. This script is called daily, then j-git-backup reads all of my Git repositories and makes a bundle of each one with all TAGs and BRANCHES, then, these bundles are copied to a SMB share in a Microsoft(R) Windows machine.
+
+ 
