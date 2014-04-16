@@ -1,6 +1,10 @@
 package org.jdamico.jgitbkp.commons;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.channels.FileChannel;
 import java.text.Format;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -21,7 +25,7 @@ import org.xml.sax.SAXException;
 
 
 public class Utils {
-	
+
 	private static Utils INSTANCE = null;
 
 	private Utils(){}
@@ -31,24 +35,41 @@ public class Utils {
 		return INSTANCE;
 	}
 
-	public Config convertXmlToConfigEntity(String fXmlFile) throws JGitBackupException{
-		
+	public void copyFileNio(File source, File dest) throws JGitBackupException {
+		FileChannel sourceChannel = null;
+		FileChannel destChannel = null;
+		try {
+			sourceChannel = new FileInputStream(source).getChannel();
+			destChannel = new FileOutputStream(dest).getChannel();
+			destChannel.transferFrom(sourceChannel, 0, sourceChannel.size());
+		}catch(IOException ioe) {
+			LoggerManager.getInstance().logAtExceptionTime(this.getClass().getName(), ioe.getMessage());
+			throw new JGitBackupException(ioe);
+		}finally{
+			try{ if(sourceChannel !=null) sourceChannel.close(); }catch(Exception e){}
+			try{ if(destChannel !=null) destChannel.close(); }catch(Exception e){}
+		}
+
+	}
+
+	public Config convertXmlToConfigEntity(String fXmlFile) throws JGitBackupException {
+
 		/*
-		  
+
 		 <j-git-backup>
 		 <config user = "xxx" passwd = "xxxx" hostPath = "xxx/git" backupRoot = "/tmp/test" gitRoot = "/mnt" bundlePath = "/tmp" keepOld = "false">
 		 <exceptions></exceptions>
 		 </config>
 		 </j-git-backup>
-		 
+
 		 */
 
 		Config configObj = null;
 		DocumentBuilderFactory dbFactory = null;
 		DocumentBuilder dBuilder = null;
-		
+
 		try {
-			
+
 			dbFactory = DocumentBuilderFactory.newInstance();
 			dBuilder = dbFactory.newDocumentBuilder();
 			Document doc = dBuilder.parse(fXmlFile);
@@ -59,18 +80,25 @@ public class Utils {
 			String hostPath = (String) getDomTagAttribute(doc, "config", "hostPath");
 			String backupRoot = (String) getDomTagAttribute(doc, "config", "backupRoot");
 			String gitRoot = (String) getDomTagAttribute(doc, "config", "gitRoot");
+			String protocol = (String) getDomTagAttribute(doc, "config", "protocol");
+			String smtpServerPort = (String) getDomTagAttribute(doc, "config", "smtpServerPort");
+			String from = (String) getDomTagAttribute(doc, "config", "from");
+			String to = (String) getDomTagAttribute(doc, "config", "to");
 			boolean keepOld = Boolean.parseBoolean( (String) getDomTagAttribute(doc, "config", "keepOld"));
 			String bundlePath = (String) getDomTagAttribute(doc, "config", "bundlePath");
-			
+
 			List<String> exceptions = getDomTagList(doc, "exception");
-			
-			configObj = new Config(user, passwd, hostPath, backupRoot, gitRoot, bundlePath, keepOld, exceptions);
+
+			configObj = new Config(user, passwd, hostPath, backupRoot, gitRoot, bundlePath, keepOld, exceptions, protocol, smtpServerPort, from, to);
 
 		} catch (ParserConfigurationException e) {
+			LoggerManager.getInstance().logAtExceptionTime(this.getClass().getName(), e.getMessage());
 			throw new JGitBackupException(e);
 		} catch (SAXException e) {
+			LoggerManager.getInstance().logAtExceptionTime(this.getClass().getName(), e.getMessage());
 			throw new JGitBackupException(e);
 		} catch (IOException e) {
+			LoggerManager.getInstance().logAtExceptionTime(this.getClass().getName(), e.getMessage());
 			throw new JGitBackupException(e);
 		}
 
@@ -93,17 +121,17 @@ public class Utils {
 
 		return ret;
 	}
-	
+
 	private List<String> getDomTagList(Document doc, String tag) {
-		
+
 		List<String> tagListContent = new ArrayList<String>();
 
 		NodeList nList = doc.getElementsByTagName(tag);
 
-		
+
 
 		for (int temp = 0; temp < nList.getLength(); temp++) {
-			
+
 			Node nNode = nList.item(temp);
 			if (nNode.getNodeType() == Node.ELEMENT_NODE) {
 				Element eElement = (Element) nNode;
@@ -113,7 +141,7 @@ public class Utils {
 
 		return tagListContent;
 	}
-	
+
 	public String getCurrentDateTimeFormated(String format){
 		Date date = new Date();
 		Format formatter = new SimpleDateFormat(format);

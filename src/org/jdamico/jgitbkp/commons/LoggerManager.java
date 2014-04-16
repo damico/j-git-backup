@@ -46,7 +46,7 @@ public class LoggerManager{
 
 		
 
-		String stime = Utils.getInstance().getCurrentDateTimeFormated("yyyyMMMdd_HH:mm:ss");
+		String stime = Utils.getInstance().getCurrentDateTimeFormated(Constants.DATE_FORMAT);
 		if(logLevel){
 			formatedLog = stime+Constants.SEVERE_LOGLEVEL+formatedLog+"\n";
 		}else{

@@ -25,4 +25,11 @@ How it works for me? Well, in my situation, I've added a bash sript that calls t
 
 For developers who want to change or contribute to this source-code, the IDE used is Eclipse (Kepler Service Release 1), also, there is a need of Git, and of course JDK, version 1.7 or above.
 
+------------
+
+*IMPORTANT NOTICE*
+
+For now, this application just supports Git connections over HTTP or HTTPS.
+
+
 

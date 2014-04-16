@@ -21,6 +21,7 @@ public class JGitBackupException extends Exception {
 	private static final long serialVersionUID = -9217342014255738309L;
 	
 	public JGitBackupException(){
+		
 		super();
 	}
 	

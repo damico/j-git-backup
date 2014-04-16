@@ -14,10 +14,78 @@ import junit.framework.Assert;
 
 import org.jdamico.jgitbkp.commons.JGitBackupException;
 import org.jdamico.jgitbkp.commons.Utils;
+import org.jdamico.jgitbkp.components.ManagerComponent;
+import org.jdamico.jgitbkp.entities.BundleStatus;
 import org.jdamico.jgitbkp.entities.Config;
+import org.jdamico.jgitbkp.entities.RepoImpl;
+import org.jdamico.jgitbkp.runtime.Starter;
 import org.junit.Test;
 
 public class GeneralTests {
+	
+	@Test
+	public void testStarter(){
+		/*
+		 * check log
+		 * check config
+		 * parse config
+		 * check paths
+		 * populateRepos
+		 * cloneRepos
+		 * 
+		 * copy old bundles
+		 * generate bundles
+		 * copy new bundles
+		 * send email
+		 * 
+		 */
+		
+		try {
+			
+			if(ManagerComponent.getInstance().isLogExistent()){
+				if(!Starter.silent) System.out.println("Log Found.");
+				if(ManagerComponent.getInstance().isConfigExistent()){
+					if(!Starter.silent) System.out.println("Config Found.");
+					Config config = ManagerComponent.getInstance().getConfig();
+					List<RepoImpl> repos = ManagerComponent.getInstance().populateRepos(config);
+					if(repos.size() > 0){
+						if(!Starter.silent) System.out.println("Repositories Found: "+repos.size()+".");
+						ManagerComponent.getInstance().cloneRepos(repos, config);
+						
+						
+						
+						if(config.isKeepOld()){
+							ManagerComponent.getInstance().copyOldBundles(repos, config);
+							if(!Starter.silent) System.out.println("Old bundles backuped.");
+						}
+						
+						ManagerComponent.getInstance().deleteOldBundles(repos, config);
+						if(!Starter.silent) System.out.println("Old bundles deleted.");
+						
+						List<BundleStatus> bundleLst = ManagerComponent.getInstance().generateBundles(repos, config);
+						if(config.getSmtpServerPort() != null && config.getSmtpServerPort().length() > 5  &&
+							config.getFrom() !=null && config.getFrom().length() > 4 && 
+						     config.getTo() !=null && config.getTo().length() > 4){
+							
+								ManagerComponent.getInstance().sendEmail(bundleLst, config);
+						}
+					}else{
+						if(!Starter.silent) System.out.println("no repositories found");
+					}
+				}else{
+					if(!Starter.silent) System.out.println("no config");
+				}
+			}else{
+				if(!Starter.silent) System.out.println("no log");
+			}
+
+			
+			
+			
+		} catch (JGitBackupException e) {
+			e.printStackTrace();
+		}
+	}
 
 	@Test
 	public void test() {
@@ -29,13 +97,17 @@ public class GeneralTests {
 		String gitRoot = "e";
 		String passwd = "f";
 		List<String> exceptions = new ArrayList<String>();
+		String protocol = "http";
+		String smtp = "127.0.0.1";
+		String from = "damico@dcon.com.br";
+		String to = "damico@dcon.com.br";
 		
 		exceptions.add("g");
 		exceptions.add("h");
 		exceptions.add("i");
 		
 		boolean keepOld = false;
-		Config config = new Config(user, passwd, hostPath, backupRoot, gitRoot, bundlePath, keepOld, exceptions);
+		Config config = new Config(user, passwd, hostPath, backupRoot, gitRoot, bundlePath, keepOld, exceptions, protocol, smtp, from, to);
 		
 		String xmlPath = "/tmp/j-git-config.conf";
 		

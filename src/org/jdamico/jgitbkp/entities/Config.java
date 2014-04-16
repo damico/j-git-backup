@@ -22,8 +22,13 @@ public class Config {
 	private String backupRoot = null;
 	private String gitRoot = null;
 	private String bundlePath = null;
+	private String protocol = null;
+	private String smtpServerPort = null;
+	private String from = null;
+	private String to = null;
 	private boolean keepOld = false;
 	private List<String> exceptions = null;
+	
 	
 	public String getUser() {
 		return user;
@@ -77,9 +82,34 @@ public class Config {
 	public Config() {
 		super();
 	}
+	
+	public String getProtocol() {
+		return protocol;
+	}
+	public void setProtocol(String protocol) {
+		this.protocol = protocol;
+	}
+	public String getSmtpServerPort() {
+		return smtpServerPort;
+	}
+	public void setSmtpServerPort(String smtpServerPort) {
+		this.smtpServerPort = smtpServerPort;
+	}
+	public String getFrom() {
+		return from;
+	}
+	public void setFrom(String from) {
+		this.from = from;
+	}
+	public String getTo() {
+		return to;
+	}
+	public void setTo(String to) {
+		this.to = to;
+	}
 	public Config(String user, String passwd, String hostPath,
 			String backupRoot, String gitRoot, String bundlePath,
-			boolean keepOld, List<String> exceptions) {
+			boolean keepOld, List<String> exceptions, String protocol, String smtpServerPort, String from, String to) {
 		super();
 		this.user = user;
 		this.passwd = passwd;
@@ -89,6 +119,10 @@ public class Config {
 		this.bundlePath = bundlePath;
 		this.keepOld = keepOld;
 		this.exceptions = exceptions;
+		this.protocol = protocol;
+		this.smtpServerPort = smtpServerPort;
+		this.to = to;
+		this.from = from;
 	}
 	
 	@Override
@@ -105,6 +139,8 @@ public class Config {
 						    + "backupRoot = \""+getBackupRoot()+"\" "
 						    + "gitRoot = \""+getGitRoot()+"\" "
 						    + "bundlePath = \""+getBundlePath()+"\" "
+						    + "protocol = \""+getProtocol()+"\" "
+						    + "smtpServerPort = \""+getSmtpServerPort()+"\" "
 						    + "keepOld = \""+String.valueOf(isKeepOld())+"\">\n");
 		
 		List<String> excs = getExceptions();

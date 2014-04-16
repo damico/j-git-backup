@@ -9,6 +9,14 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
+
+import javax.mail.Message;
+import javax.mail.MessagingException;
+import javax.mail.Session;
+import javax.mail.Transport;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeMessage;
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -22,10 +30,13 @@ import org.eclipse.jgit.transport.BundleWriter;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.jdamico.jgitbkp.commons.Constants;
 import org.jdamico.jgitbkp.commons.JGitBackupException;
+import org.jdamico.jgitbkp.commons.LoggerManager;
 import org.jdamico.jgitbkp.commons.Utils;
 import org.jdamico.jgitbkp.entities.BundleStatus;
 import org.jdamico.jgitbkp.entities.Config;
 import org.jdamico.jgitbkp.entities.RepoImpl;
+import org.jdamico.jgitbkp.runtime.Starter;
+
 
 public class ManagerComponent {
 
@@ -34,7 +45,7 @@ public class ManagerComponent {
 	private static ManagerComponent INSTANCE = null;
 
 	public static ManagerComponent getInstance(){
-		if(INSTANCE != null) INSTANCE = new ManagerComponent();
+		if(INSTANCE == null) INSTANCE = new ManagerComponent();
 		return INSTANCE;
 	}
 
@@ -79,17 +90,27 @@ public class ManagerComponent {
 				try {
 					Git.cloneRepository()
 					.setCloneAllBranches(true)
-					.setURI("http://"+config.getHostPath()+"/"+reposLst.get(i).getName())
+					.setURI(config.getProtocol()+"://"+config.getHostPath()+"/"+reposLst.get(i).getName())
 					.setCredentialsProvider(new UsernamePasswordCredentialsProvider(config.getUser(), config.getPasswd()))
 					.setDirectory(new File(reposLst.get(i).getClonedPath()))
 					.setProgressMonitor(new TextProgressMonitor()).call();
 
 				} catch (InvalidRemoteException e) {
+					LoggerManager.getInstance().logAtExceptionTime(this.getClass().getName(), e.getMessage());
 					throw new JGitBackupException(e);
 				} catch (TransportException e) {
+					LoggerManager.getInstance().logAtExceptionTime(this.getClass().getName(), e.getMessage());
 					throw new JGitBackupException(e);
 				} catch (GitAPIException e) {
+					LoggerManager.getInstance().logAtExceptionTime(this.getClass().getName(), e.getMessage());
 					throw new JGitBackupException(e);
+				}
+
+			}else{
+				String err = "Unable to create directory for clone ["+reposLst.get(i).getName()+"]. Check the path and permissions.";
+				if(!f.exists()){
+					if(!Starter.silent) System.out.println(err);
+					LoggerManager.getInstance().logAtExceptionTime(this.getClass().getName(), err);
 				}
 
 			}
@@ -99,7 +120,14 @@ public class ManagerComponent {
 
 	public List<BundleStatus> generateBundles(List<RepoImpl> reposLst, Config config) throws JGitBackupException {
 
+		List<BundleStatus> bundleStatusLst = new ArrayList<BundleStatus>();
+
+		boolean backupStatus = false;
+		StringBuffer backupMessage = new StringBuffer();
+
 		for(int i=0; i<reposLst.size(); i++){
+			String bundlePath = config.getBundlePath()+"/"+reposLst.get(i).getName()+".bundle";
+
 			File gitWorkDir = new File(reposLst.get(i).getClonedPath());
 			Git git = null;
 			Repository localRepoGit = null;
@@ -109,34 +137,97 @@ public class ManagerComponent {
 			try {
 				git = Git.open(gitWorkDir);
 				git.pull();
+				if(!Starter.silent) System.out.println("Updated data for ["+reposLst.get(i).getName()+"]");
 				localRepoGit = git.getRepository();
 				bundleWriter = new BundleWriter(localRepoGit);
 				pMonitor = new TextProgressMonitor();
-				oStream = new FileOutputStream(config.getBundlePath()+"/"+reposLst.get(i).getName()+".bundle");
+				oStream = new FileOutputStream(bundlePath);
 				Map<String, Ref> allRefs = localRepoGit.getAllRefs();
 				Collection<Ref> values = allRefs.values();
 				Iterator<Ref> iter = values.iterator();
 				while(iter.hasNext()){
-					Ref element = iter.next();
-					bundleWriter.include(element);
-					System.out.println("Added: "+element.getName());
+					try{
+						Ref element = iter.next();
+						bundleWriter.include(element);
+					} catch (IllegalArgumentException e) {
+
+						if(!e.getMessage().equalsIgnoreCase("Invalid ref name: HEAD")){
+							String err = reposLst.get(i).getName()+": "+e.getMessage();
+							backupMessage.append(err);
+							LoggerManager.getInstance().logAtExceptionTime(this.getClass().getName(), err);
+						}
+					}
+
 				}
-				bundleWriter.writeBundle(pMonitor, oStream);
+				if(!Starter.silent) bundleWriter.writeBundle(pMonitor, oStream);
+				else bundleWriter.writeBundle(null, oStream);
+
 			} catch (IOException e) {
+				String err = reposLst.get(i).getName()+": "+e.getMessage();
+				backupMessage.append(err);
+				LoggerManager.getInstance().logAtExceptionTime(this.getClass().getName(), err);
 				throw new JGitBackupException(e);
 			}
 
+			File f = new File(bundlePath);
+			if(f.exists() && f.length() > 100){
+				backupStatus = f.exists();
+			}else backupStatus = false;
 
+			bundleStatusLst.add(new BundleStatus(reposLst.get(i).getName(), backupStatus, backupMessage.toString(), Utils.getInstance().getCurrentDateTimeFormated(Constants.DATE_FORMAT), bundlePath));
+			if(!Starter.silent) System.out.println("Bundle created: "+bundlePath+" - "+backupStatus);
 		}
 
-		return null;
+		return bundleStatusLst;
 	}
 
 	public void copyOldBundles(List<RepoImpl> reposLst, Config config) throws JGitBackupException {
+		for (int i = 0; i < reposLst.size(); i++) {
+			String bundlePath = config.getBundlePath()+"/"+reposLst.get(i).getName()+".bundle";
+			File f = new File(bundlePath);
+			if(f.exists()){
+				File old = new File(bundlePath+".old");
+				if(old.exists()) old.delete();
+				Utils.getInstance().copyFileNio(f, old);
+			}
+		}
+	}
 
+	public void deleteOldBundles(List<RepoImpl> reposLst, Config config) throws JGitBackupException {
+		for (int i = 0; i < reposLst.size(); i++) {
+			String bundlePath = config.getBundlePath()+"/"+reposLst.get(i).getName()+".bundle";
+			File f = new File(bundlePath);
+			if(f.exists()) f.delete();
+		}
 	}
 
 	public void sendEmail(List<BundleStatus> bundleStatusLst, Config config) throws JGitBackupException {
 
+		StringBuffer msg = new StringBuffer();
+
+		for (int i = 0; i < bundleStatusLst.size(); i++) {
+			msg.append(bundleStatusLst.get(i).getBackupDate() +" - ");
+			msg.append(bundleStatusLst.get(i).getRepoName() +" - ");
+			msg.append(bundleStatusLst.get(i).getBundleNamePath() +" - ");
+			msg.append(bundleStatusLst.get(i).isBackupStatus() +" - ");
+			msg.append(bundleStatusLst.get(i).getBackupMessage() +"\n");
+		}
+
+		Properties properties = System.getProperties();
+		properties.setProperty("mail.smtp.host", config.getSmtpServerPort());
+		Session session = Session.getDefaultInstance(properties);
+
+		try{	         
+			MimeMessage message = new MimeMessage(session);
+			message.setFrom(new InternetAddress(config.getFrom()));
+			message.addRecipient(Message.RecipientType.TO, new InternetAddress(config.getTo()));
+			message.setSubject("### "+Constants.APP_NAME+" notification ###");
+			message.setText(msg.toString());
+			Transport.send(message);
+		}catch (MessagingException e) {
+			LoggerManager.getInstance().logAtExceptionTime(this.getClass().getName(), e.getMessage());
+			if(!Starter.silent) System.out.println(e.getMessage());
+
+		}
 	}
 }
