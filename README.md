@@ -19,7 +19,25 @@ This application is based on CLI (Command Line Interface) and have some importan
 
 How it works for me? Well, in my situation, I've added a bash sript that calls the j-git-backup in our CRON TABLE. This script is called daily, then j-git-backup reads all of my Git repositories and makes a bundle of each one with all TAGs and BRANCHES, then, these bundles are copied to a SMB share in a Microsoft(R) Windows machine.
 
+My crontab line looks like this (it runs silently daily at 12:30 AM):
+
+	30 0 * * * /bin/bash /var/j-git-backup/bin/j-git-backup-cron.sh
+
 ------------
+
+*Configuration*
+
+This is an example of /etc/j-git-backup/j-git-backup.conf configuration file:
+
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+	<j-git-backup>
+		<config user = "gituser" passwd = "****" hostPath = "127.0.0.1/git" backupRoot = "/path-for-stage" gitRoot = "/path-for-git-repos" bundlePath = "/path-for-backuped-repos" protocol = "http" smtpServerPort = "127.0.0.1" keepOld = "true" to="to1@server.com,to2@server.com" from="from@server.com">
+			<exception>repo-not-bckp1.git</exception>
+			<exception>repo-not-bckp2.git</exception>
+		</config>
+	</j-git-backup>
+	
+-------------	
 
 *Development* 
 
