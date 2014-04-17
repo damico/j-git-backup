@@ -4,6 +4,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 
@@ -49,12 +50,16 @@ public class LoggerManager{
 		String stime = Utils.getInstance().getCurrentDateTimeFormated(Constants.DATE_FORMAT);
 		if(logLevel){
 			formatedLog = stime+Constants.SEVERE_LOGLEVEL+formatedLog+"\n";
+			logger.log(Level.SEVERE, formatedLog);
 		}else{
 			formatedLog = stime+Constants.NORMAL_LOGLEVEL+formatedLog+"\n";
+			
 		}
 
 		int limit = Constants.FIXED_LOGLIMIT;
 
+		
+		
 		File listenerLog = null;
 		FileWriter fw = null;
 		BufferedWriter bwr = null;

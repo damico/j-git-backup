@@ -87,10 +87,18 @@ public class Utils {
 			boolean keepOld = Boolean.parseBoolean( (String) getDomTagAttribute(doc, "config", "keepOld"));
 			String bundlePath = (String) getDomTagAttribute(doc, "config", "bundlePath");
 
-			List<String> exceptions = getDomTagList(doc, "exception");
+			if(nullEmptyChecker(user, 1, "user") &&
+					nullEmptyChecker(passwd, 1, "passwd") &&
+					nullEmptyChecker(hostPath, 2, "hostPath") &&
+					nullEmptyChecker(backupRoot, 2, "backupRoot") &&
+					nullEmptyChecker(gitRoot, 2, "gitRoot") &&
+					nullEmptyChecker(protocol, 4, "protocol")) {
 
-			configObj = new Config(user, passwd, hostPath, backupRoot, gitRoot, bundlePath, keepOld, exceptions, protocol, smtpServerPort, from, to);
 
+				List<String> exceptions = getDomTagList(doc, "exception");
+
+				configObj = new Config(user, passwd, hostPath, backupRoot, gitRoot, bundlePath, keepOld, exceptions, protocol, smtpServerPort, from, to);
+			}
 		} catch (ParserConfigurationException e) {
 			LoggerManager.getInstance().logAtExceptionTime(this.getClass().getName(), e.getMessage());
 			throw new JGitBackupException(e);
@@ -147,6 +155,18 @@ public class Utils {
 		Format formatter = new SimpleDateFormat(format);
 		String stime = formatter.format(date);
 		return stime;
+	}
+
+	public boolean nullEmptyChecker(String content, int size, String label) throws JGitBackupException{
+		boolean ret = false;
+		if(content != null){
+
+			if(content.length() >= size) ret = true;
+			else throw new JGitBackupException("O campo "+label+" é menor que seu tamanho mínimo ("+size+").");
+
+		}else throw new JGitBackupException("O campo "+label+" é nulo.");
+
+		return ret;
 	}
 
 }

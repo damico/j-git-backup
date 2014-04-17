@@ -72,7 +72,13 @@ public class ManagerComponent {
 		for (String itemRepo : fRepos) {
 			File fItemRepo = new File(config.getGitRoot()+"/"+itemRepo);
 			if(fItemRepo.isDirectory() && itemRepo.contains(".git") && !itemRepo.equals(".git")){
-				repos.add(new org.jdamico.jgitbkp.entities.RepoImpl(itemRepo, null, config.getBackupRoot()+"/"+itemRepo));
+				
+				if(!config.getExceptions().contains(itemRepo)) repos.add(new org.jdamico.jgitbkp.entities.RepoImpl(itemRepo, null, config.getBackupRoot()+"/"+itemRepo));
+				else{
+					String msg = "Repository ["+itemRepo+"] found in exceptions list.";
+					if(!Starter.silent) System.out.println(msg);
+					LoggerManager.getInstance().logAtDebugTime(this.getClass().getName(), msg);
+				}
 			}
 		}
 
@@ -204,12 +210,16 @@ public class ManagerComponent {
 	public void sendEmail(List<BundleStatus> bundleStatusLst, Config config) throws JGitBackupException {
 
 		StringBuffer msg = new StringBuffer();
+		String[] tOs = null; 
+		StringBuffer dests = new StringBuffer(); 
+		
+		
 
 		for (int i = 0; i < bundleStatusLst.size(); i++) {
 			msg.append(bundleStatusLst.get(i).getBackupDate() +" - ");
 			msg.append(bundleStatusLst.get(i).getRepoName() +" - ");
 			msg.append(bundleStatusLst.get(i).getBundleNamePath() +" - ");
-			msg.append(bundleStatusLst.get(i).isBackupStatus() +" - ");
+			msg.append(bundleStatusLst.get(i).isBackupStatus() +";  ");
 			msg.append(bundleStatusLst.get(i).getBackupMessage() +"\n");
 		}
 
@@ -220,10 +230,23 @@ public class ManagerComponent {
 		try{	         
 			MimeMessage message = new MimeMessage(session);
 			message.setFrom(new InternetAddress(config.getFrom()));
-			message.addRecipient(Message.RecipientType.TO, new InternetAddress(config.getTo()));
+			if(config.getTo().contains(",")){
+				tOs = config.getTo().split(",");
+				for (String email : tOs) {
+					message.addRecipient(Message.RecipientType.TO, new InternetAddress(email.trim()));
+					dests.append(email+" ");
+				}
+			}else{
+				message.addRecipient(Message.RecipientType.TO, new InternetAddress(config.getTo()));
+				dests.append(config.getTo()+" ");
+			}
+			
 			message.setSubject("### "+Constants.APP_NAME+" notification ###");
 			message.setText(msg.toString());
 			Transport.send(message);
+			String logline = "Notification email sent ["+dests.toString()+"].";
+			LoggerManager.getInstance().logAtDebugTime(this.getClass().getName(), logline);
+			if(!Starter.silent) System.out.println(logline);
 		}catch (MessagingException e) {
 			LoggerManager.getInstance().logAtExceptionTime(this.getClass().getName(), e.getMessage());
 			if(!Starter.silent) System.out.println(e.getMessage());
