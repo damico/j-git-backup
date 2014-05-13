@@ -129,6 +129,14 @@ public class ManagerComponent {
 				}
 
 			}else{
+				try {
+					Git  git = Git.open(f);
+					git.pull();
+					LoggerManager.getInstance().logAtDebugTime(this.getClass().getName(), "Updating data from repository.");
+				} catch (IOException e) {
+					LoggerManager.getInstance().logAtExceptionTime(this.getClass().getName(), e.getMessage());
+					throw new JGitBackupException(e);
+				}
 				String err = "Unable to create directory for clone ["+reposLst.get(i).getName()+"]. Check the path and permissions.";
 				if(!f.exists()){
 					if(!Starter.silent) System.out.println(err);
