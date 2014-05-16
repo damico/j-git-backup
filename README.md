@@ -29,6 +29,7 @@ My crontab line looks like this (it runs silently daily at 12:30 AM):
 
 This is an example of /etc/j-git-backup/j-git-backup.conf configuration file:
 
+```xml
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 	<j-git-backup>
 		<config user = "gituser" passwd = "****" hostPath = "127.0.0.1/git" backupRoot = "/path-for-stage" gitRoot = "/path-for-git-repos" bundlePath = "/path-for-backuped-repos" protocol = "http" smtpServerPort = "127.0.0.1" keepOld = "true" to="to1@server.com,to2@server.com" from="from@server.com">
@@ -36,7 +37,8 @@ This is an example of /etc/j-git-backup/j-git-backup.conf configuration file:
 			<exception>repo-not-bckp2.git</exception>
 		</config>
 	</j-git-backup>
-	
+```
+
 -------------	
 
 *Development* 
@@ -49,5 +51,18 @@ For developers who want to change or contribute to this source-code, the IDE use
 
 For now, this application just supports Git connections over HTTP or HTTPS.
 
+------------
 
+* BACKUP RESTORE *
+
+In order to restore a backup done with j-git-backup you will need to know how to handle git bundle files.
+The common way is follow this 3 steps bellow:
+
+```bash 
+$ git clone --mirror path-to-git-bundle-file path-to-new-remote-repo.git
+$ cd path-to-new-remote-repo.git
+$ for remote in `git branch -r | grep '\->'`; do git branch --track $remote; done
+```
+-------------  
+  
 
