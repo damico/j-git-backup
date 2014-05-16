@@ -112,11 +112,14 @@ public class ManagerComponent {
 				try {
 					Git.cloneRepository()
 					.setCloneAllBranches(true)
+					.setCloneSubmodules(true)
+					.setNoCheckout(false)
 					.setURI(config.getProtocol()+"://"+config.getHostPath()+"/"+reposLst.get(i).getName())
 					.setCredentialsProvider(new UsernamePasswordCredentialsProvider(config.getUser(), config.getPasswd()))
 					.setDirectory(new File(reposLst.get(i).getClonedPath()))
 					.setProgressMonitor(new TextProgressMonitor()).call();
 
+					
 				} catch (InvalidRemoteException e) {
 					LoggerManager.getInstance().logAtExceptionTime(this.getClass().getName(), e.getMessage());
 					throw new JGitBackupException(e);
